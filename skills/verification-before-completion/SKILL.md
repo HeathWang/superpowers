@@ -1,6 +1,6 @@
 ---
 name: verification-before-completion
-description: Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires running verification commands and confirming output before making any success claims; evidence before assertions always
+description: Use when the user explicitly asks for verification evidence, such as confirming tests or builds pass or checking readiness for a commit, merge, or PR
 ---
 
 # Verification Before Completion
@@ -116,15 +116,13 @@ From 24 failure memories:
 
 ## When To Apply
 
-**ALWAYS before:**
-- ANY variation of success/completion claims
-- ANY expression of satisfaction
-- ANY positive statement about work state
-- Committing, PR creation, task completion
-- Moving to next task
-- Delegating to agents
+**Use this skill when explicitly requested:**
+- The user asks for verification evidence about readiness, completion, or correctness
+- The user asks to confirm tests, builds, or checks pass
+- The user asks for evidence before a commit, merge, or PR
+- Another higher-priority instruction explicitly requires fresh verification
 
-**Rule applies to:**
+**After this skill is already active, apply the rule to:**
 - Exact phrases
 - Paraphrases and synonyms
 - Implications of success

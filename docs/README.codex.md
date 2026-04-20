@@ -55,14 +55,14 @@ Codex has native skill discovery — it scans `~/.agents/skills/` at startup, pa
 ~/.agents/skills/superpowers/ → ~/.codex/superpowers/skills/
 ```
 
-The `using-superpowers` skill is discovered automatically and enforces skill usage discipline — no additional configuration needed.
+The `using-superpowers` skill is discovered automatically alongside the rest of the library. Codex still decides which skills to activate for a given conversation based on native matching; this setup does not bootstrap `using-superpowers` at startup or guarantee that one loaded skill will activate another.
 
 ## Usage
 
 Skills are discovered automatically. Codex activates them when:
 - You mention a skill by name (e.g., "use brainstorming")
 - The task matches a skill's description
-- The `using-superpowers` skill directs Codex to use one
+- Another already-loaded skill or instruction mentions one explicitly
 
 ### Personal Skills
 

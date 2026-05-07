@@ -34,6 +34,12 @@ Wait for the user's response. If they request changes, make them and re-run the 
 - In that direct path, do NOT write a design spec and do NOT invoke `superpowers:writing-plans`
 - Before claiming completion on that path, follow the closing discipline from `superpowers:executing-plans`
 - That means borrow its final self-review and verification discipline only; do NOT invoke `superpowers:executing-plans` unless you already have an approved written implementation plan
+- After that final self-review and verification pass, ask the user whether they want code review
+- This is a closing consent gate, not a dialogue-only brainstorming item; direct-start alone does not skip it
+- If the user already explicitly requested code review for this point, invoke `superpowers:requesting-code-review` without asking again
+- If the user already explicitly declined or prohibited code review, complete normally without asking
+- Do not dispatch a review subagent or recreate review steps from memory before invoking `superpowers:requesting-code-review`
+- Do not invoke `superpowers:requesting-code-review` unless the user says yes or already gave that explicit authorization
 - If the work is larger or uncertain, invoke `superpowers:writing-plans` to create a detailed implementation plan
 - If a larger design was already approved in chat, you may move straight into `superpowers:writing-plans` without creating a spec first
 - If you already wrote a design doc, the user must still review it before you begin any follow-up work

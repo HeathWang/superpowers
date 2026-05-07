@@ -31,7 +31,7 @@ For pressure cases, rationalizations, and self-checks, see [anti-rationalization
 
 ## Checklist
 
-You MUST create a task for each of these items and complete them in order. Skip dialogue-only items when direct-start is active, and skip design-doc-only items when no written spec is needed.
+You MUST create a task for each checklist item and complete them in order. Skip dialogue-only items when direct-start is active, skip design-doc-only items when no written spec is needed, and apply each item's own skip conditions where stated.
 
 1. **Explore project context** — check the relevant files, docs, and existing patterns
 2. **Check for explicit direct-start** — only switch if you can quote the user's override or a clear equivalent in their language; offer visual companion in its own message only when visual questions are likely
@@ -42,6 +42,7 @@ You MUST create a task for each of these items and complete them in order. Skip 
 7. **Write design doc when needed** — save the validated design only when it adds durable value, then self-review it for placeholders, contradictions, scope drift, and ambiguity
 8. **User reviews written spec** — if you wrote a design doc, stop and wait for the user's approval before planning or follow-up work
 9. **Route into follow-up work** — if the work is small, local, and non-complex, continue directly from the approved design on the default path, or directly after direct-start context analysis on the direct-start path, and later follow the closing discipline from `superpowers:executing-plans`; otherwise use `superpowers:writing-plans`
+10. **Offer code-review escalation** — after final self-review and verification on the small direct path, ask whether the user wants code review unless they already accepted, declined, or prohibited it. If yes, invoke `superpowers:requesting-code-review` before dispatching any review subagent; do not recreate its workflow from memory
 
 ## Process Flow
 
@@ -61,7 +62,9 @@ digraph brainstorming {
     "Write design doc" [shape=box];
     "User reviews spec?" [shape=diamond];
     "Start implementation directly" [shape=box];
-    "Read changed files\nand self-review" [shape=box];
+    "Read changed files,\nself-review, and verify" [shape=box];
+    "User wants\ncode review?" [shape=diamond];
+    "Invoke superpowers:requesting-code-review skill" [shape=box];
     "Invoke writing-plans skill" [shape=doublecircle];
     "Complete follow-up work" [shape=doublecircle];
 
@@ -84,12 +87,15 @@ digraph brainstorming {
     "User reviews spec?" -> "Write design doc" [label="changes requested"];
     "Write design doc" -> "User reviews spec?";
     "User reviews spec?" -> "Invoke writing-plans skill" [label="approved"];
-    "Start implementation directly" -> "Read changed files\nand self-review";
-    "Read changed files\nand self-review" -> "Complete follow-up work";
+    "Start implementation directly" -> "Read changed files,\nself-review, and verify";
+    "Read changed files,\nself-review, and verify" -> "User wants\ncode review?";
+    "User wants\ncode review?" -> "Invoke superpowers:requesting-code-review skill" [label="yes"];
+    "User wants\ncode review?" -> "Complete follow-up work" [label="no"];
+    "Invoke superpowers:requesting-code-review skill" -> "Complete follow-up work";
 }
 ```
 
-**Routing depends on complexity, not preference alone.** In direct-start mode, make that judgment from context yourself. Otherwise, make it after design approval. If you are genuinely unsure whether the work is still "small", bias toward `superpowers:writing-plans`. On the small direct path, borrow the final self-review discipline from `superpowers:executing-plans`; do not invoke that skill unless a written implementation plan actually exists.
+**Routing depends on complexity, not preference alone.** In direct-start mode, make that judgment from context yourself. Otherwise, make it after design approval. If you are genuinely unsure whether the work is still "small", bias toward `superpowers:writing-plans`. On the small direct path, borrow the final self-review and verification discipline from `superpowers:executing-plans`; do not invoke that skill unless a written implementation plan actually exists.
 
 ## The Process
 

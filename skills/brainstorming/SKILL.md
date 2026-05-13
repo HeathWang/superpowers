@@ -13,6 +13,22 @@ Default path: explore the current project context, ask questions one at a time, 
 Unless the user explicitly authorizes direct-start, do NOT invoke any implementation skill, write any code, scaffold any project, or take any implementation action until you have presented a design and the user has approved it. This applies to EVERY project regardless of perceived simplicity.
 </HARD-GATE>
 
+<COMPLETION-GATE>
+On the small direct implementation path, the final response is blocked until requesting-code-review escalation consent has been handled.
+
+Before any final response that claims implementation is complete:
+1. Finish the final self-review and verification pass.
+2. If the user already explicitly requested code review at this point, invoke `superpowers:requesting-code-review` as the sole review-routing skill.
+3. If the user already explicitly declined or prohibited code review, complete normally.
+4. Otherwise ask whether they want the `superpowers:requesting-code-review` escalation workflow and stop.
+
+Phrase this offer as escalation to the requesting-code-review workflow, not as an offer to personally review the files. When the user replies to this gate with "code review", "代码审查", "yes, review", or an equivalent consent phrase, treat it as acceptance of the escalation offer. Invoke `superpowers:requesting-code-review` only; do NOT also invoke generic file/diff/code-review skills. The requesting-code-review skill owns any reviewer dispatch or review workflow.
+
+This exclusion is scoped to completion-gate replies. A fresh, unrelated request like "review this diff" with files or a patch is a normal review request, not automatic escalation consent.
+
+A completion summary that omits this question is a process failure. Small scope, direct-start mode, successful verification, or "just a quick final update" do not skip this gate.
+</COMPLETION-GATE>
+
 ## Direct-Start Override
 
 Direct-start mode requires an explicit user override that you can quote from the user's message. Match the user's actual language; semantic equivalents in any language count.
@@ -42,7 +58,7 @@ You MUST create a task for each checklist item and complete them in order. Skip 
 7. **Write design doc when needed** — save the validated design only when it adds durable value, then self-review it for placeholders, contradictions, scope drift, and ambiguity
 8. **User reviews written spec** — if you wrote a design doc, stop and wait for the user's approval before planning or follow-up work
 9. **Route into follow-up work** — if the work is small, local, and non-complex, continue directly from the approved design on the default path, or directly after direct-start context analysis on the direct-start path, and later follow the closing discipline from `superpowers:executing-plans`; otherwise use `superpowers:writing-plans`
-10. **Offer code-review escalation** — after final self-review and verification on the small direct path, ask whether the user wants code review unless they already accepted, declined, or prohibited it. If yes, invoke `superpowers:requesting-code-review` before dispatching any review subagent; do not recreate its workflow from memory
+10. **Offer code-review escalation** — after final self-review and verification on the small direct path, ask whether the user wants the `superpowers:requesting-code-review` escalation workflow unless they already accepted, declined, or prohibited it. If yes, invoke only `superpowers:requesting-code-review` before dispatching any review subagent; do not also invoke generic review skills or recreate its workflow from memory
 
 ## Process Flow
 

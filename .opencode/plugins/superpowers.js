@@ -7,7 +7,6 @@
 
 import path from 'path';
 import fs from 'fs';
-import os from 'os';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -33,46 +32,44 @@ const extractAndStripFrontmatter = (content) => {
   return { frontmatter, content: body };
 };
 
-// Normalize a path: trim whitespace, expand ~, resolve to absolute
-const normalizePath = (p, homeDir) => {
-  if (!p || typeof p !== 'string') return null;
-  let normalized = p.trim();
-  if (!normalized) return null;
-  if (normalized.startsWith('~/')) {
-    normalized = path.join(homeDir, normalized.slice(2));
-  } else if (normalized === '~') {
-    normalized = homeDir;
-  }
-  return path.resolve(normalized);
-};
+// Module-level cache for bootstrap content.
+// The SKILL.md file does not change during a session, so reading + parsing it
+// once eliminates redundant fs.existsSync + fs.readFileSync + regex work on
+// every agent step. See #1202 for the full analysis.
+let _bootstrapCache = undefined; // undefined = not yet loaded, null = file missing
 
 export const SuperpowersPlugin = async ({ client, directory }) => {
-  const homeDir = os.homedir();
   const superpowersSkillsDir = path.resolve(__dirname, '../../skills');
-  const envConfigDir = normalizePath(process.env.OPENCODE_CONFIG_DIR, homeDir);
-  const configDir = envConfigDir || path.join(homeDir, '.config/opencode');
 
-  // Helper to generate bootstrap content
+  // Helper to generate bootstrap content (cached after first call)
   const getBootstrapContent = () => {
+    // Return cached result on subsequent calls
+    if (_bootstrapCache !== undefined) return _bootstrapCache;
+
     // Try to load using-superpowers skill
     const skillPath = path.join(superpowersSkillsDir, 'using-superpowers', 'SKILL.md');
-    if (!fs.existsSync(skillPath)) return null;
+    if (!fs.existsSync(skillPath)) {
+      _bootstrapCache = null;
+      return null;
+    }
 
     const fullContent = fs.readFileSync(skillPath, 'utf8');
     const { content } = extractAndStripFrontmatter(fullContent);
 
     const toolMapping = `**Tool Mapping for OpenCode:**
-When skills reference tools you don't have, substitute OpenCode equivalents:
-- \`TodoWrite\` → \`todowrite\`
-- \`Task\` tool with subagents → Use OpenCode's subagent system (@mention)
-- \`Skill\` tool → OpenCode's native \`skill\` tool
-- \`Read\`, \`Write\`, \`Edit\`, \`Bash\` → Your native tools
+When skills request actions, substitute OpenCode equivalents:
+- Create or update todos → \`todowrite\`
+- \`Subagent (general-purpose):\` → \`task\` with \`subagent_type: "general"\`
+- Invoke a skill → OpenCode's native \`skill\` tool
+- Read files → \`read\`
+- Create, edit, or delete files → \`apply_patch\`
+- Run shell commands → \`bash\`
+- Search files → \`grep\`, \`glob\`
+- Fetch a URL → \`webfetch\`
 
-**Skills location:**
-Superpowers skills are in \`${configDir}/skills/superpowers/\`
 Use OpenCode's native \`skill\` tool to list and load skills.`;
 
-    return `<EXTREMELY_IMPORTANT>
+    _bootstrapCache = `<EXTREMELY_IMPORTANT>
 You have superpowers.
 
 **IMPORTANT: The using-superpowers skill content is included below. It is ALREADY LOADED - you are currently following it. Do NOT use the skill tool to load "using-superpowers" again - that would be redundant.**
@@ -81,6 +78,8 @@ ${content}
 
 ${toolMapping}
 </EXTREMELY_IMPORTANT>`;
+
+    return _bootstrapCache;
   };
 
   return {

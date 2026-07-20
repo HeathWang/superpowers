@@ -7,7 +7,7 @@ description: Use when you have a spec or requirements for a multi-step task, bef
 
 ## Overview
 
-Write comprehensive implementation plans assuming the engineer has zero context for our codebase and questionable taste. Document everything they need to know: which files to touch for each task, code, testing, docs they might need to check, how to test it. Give them the whole plan as bite-sized tasks. DRY. YAGNI. TDD. Frequent commits.
+Write comprehensive implementation plans assuming the engineer has zero context for our codebase and questionable taste. Document everything they need to know: which files to touch for each task, code, testing, docs they might need to check, how to test it. Give them the whole plan as bite-sized tasks. DRY. YAGNI. Use the testing workflow the human partner or approved spec actually requires. Include frequent verification checkpoints.
 
 Assume they are a skilled developer, but know almost nothing about our toolset or problem domain. Assume they don't know good test design very well.
 
@@ -21,6 +21,17 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 ## Scope Check
 
 If the spec covers multiple independent subsystems, it should have been broken into sub-project specs during brainstorming. If it wasn't, suggest breaking this into separate plans — one per subsystem. Each plan should produce working, testable software on its own.
+
+## Testing Mode
+
+Choose one mode before writing tasks:
+
+- **TDD** — only when the human partner explicitly requested TDD or the approved spec requires it. Invoke `superpowers:test-driven-development` and use RED-GREEN-REFACTOR.
+- **Standard** — the default. Add appropriate automated tests and validation, but do not impose test-first ordering, RED/GREEN evidence, or the TDD skill.
+
+Needing tests, changing behavior, fixing a bug, or adding a feature does not by
+itself select TDD. Record the selected mode in the plan header and in every
+task so an executor that receives only one task cannot infer a different mode.
 
 ## File Structure
 
@@ -45,11 +56,16 @@ independently testable deliverable.
 ## Bite-Sized Task Granularity
 
 **Each step is one action (2-5 minutes):**
-- "Write the failing test" - step
-- "Run it to make sure it fails" - step
-- "Implement the minimal code to make the test pass" - step
-- "Run the tests and make sure they pass" - step
-- "Commit" - step
+- Standard mode: "Implement one behavior" - step
+- Standard mode: "Add or update its automated tests" - step
+- TDD mode: "Write the failing test" - step
+- TDD mode: "Run it to make sure it fails" - step
+- TDD mode: "Implement the minimal code to make the test pass" - step
+- Either mode: "Run the relevant tests and make sure they pass" - step
+- "Read the Task files and verify their logic against the Task requirements" - step
+
+Every Task MUST end with the file-reading verification step, after all of its
+implementation and test steps.
 
 ## Plan Document Header
 
@@ -65,6 +81,8 @@ independently testable deliverable.
 **Architecture:** [2-3 sentences about approach]
 
 **Tech Stack:** [Key technologies/libraries]
+
+**Testing:** [Standard, or TDD — name the explicit request/spec requirement when TDD]
 
 ## Global Constraints
 
@@ -92,6 +110,13 @@ include this section.]
   and return types. A task's implementer sees only their own task; this
   block is how they learn the names and types neighboring tasks use.]
 
+**Testing:** [Copy the plan's Standard or TDD mode exactly]
+
+Include exactly one of the following step sequences in the generated task.
+Never copy both branches into a plan.
+
+**If Testing is TDD:**
+
 - [ ] **Step 1: Write the failing test**
 
 ```python
@@ -117,12 +142,59 @@ def function(input):
 Run: `pytest tests/path/test.py::test_name -v`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+**If Testing is Standard:**
+
+- [ ] **Step 1: Implement the requested behavior**
+
+```python
+def function(input):
+    return expected
+```
+
+- [ ] **Step 2: Add or update automated tests**
+
+```python
+def test_specific_behavior():
+    result = function(input)
+    assert result == expected
+```
+
+- [ ] **Step 3: Run the relevant tests**
+
+Run: `pytest tests/path/test.py::test_name -v`
+Expected: PASS
+
+For changes where an automated test is not applicable, replace the test step
+with the exact validation command and expected result. Do not label standard
+testing steps as RED, GREEN, test-first, or TDD.
+
+**Both modes end with:**
+
+- [ ] **Final Step: Read the Task files and verify the implementation**
+
+Read the latest contents of every file listed in this Task's **Files** section.
+Inspect the changed functions, classes, and their directly affected call sites
+against the Task's stated requirements, every implementation step, applicable
+**Global Constraints**, and the **Interfaces** contract. For new files, read
+the complete file.
+
+Run only the non-mutating diagnostics permitted by the plan's Global
+Constraints, with exact paths and expected output. For example:
 
 ```bash
-git add tests/path/test.py src/path/file.py
-git commit -m "feat: add specific feature"
+git diff --check -- tests/path/test.py src/path/file.py
 ```
+
+Expected: state the concrete behavior and interfaces that should be present in
+the files after this Task, plus the diagnostics result. The checkpoint judges
+the implementation by reading the files; it makes no claim about what other
+changes are or are not present in the working tree. If the execution workflow
+later produces a before/after snapshot package, reviewers may use it as
+additional input; it does not replace reading and understanding the Task
+files.
+Leave every change produced by the plan unstaged and uncommitted, and preserve
+the pre-existing index exactly. Plans contain no `git add` or `git commit`
+steps.
 ````
 
 ## No Placeholders
@@ -139,7 +211,8 @@ Every step must contain the actual content an engineer needs. These are **plan f
 - Exact file paths always
 - Complete code in every step — if a step changes code, show the code
 - Exact commands with expected output
-- DRY, YAGNI, TDD, frequent commits
+- DRY, YAGNI, the selected testing mode, frequent verification checkpoints
+- Plan-produced changes remain unstaged and uncommitted; pre-existing index state remains untouched
 
 ## Self-Review
 
@@ -157,13 +230,23 @@ If you find issues, fix them inline. No need to re-review — just fix and move 
 
 After saving the plan, offer execution choice:
 
-**"Plan complete and saved to `docs/superpowers/plans/<filename>.md`. Two execution options:**
+Use this exact response shape so the human partner can copy the plan path:
+
+**Plan complete and saved to:**
+
+```
+docs/superpowers/plans/<filename>.md
+```
+
+**Three execution options:**
 
 **1. Subagent-Driven (recommended)** - I dispatch a fresh subagent per task, review between tasks, fast iteration
 
 **2. Inline Execution** - Execute tasks in this session using executing-plans, batch execution with checkpoints
 
-**Which approach?"**
+**3. Do Nothing** - Leave the plan saved without starting implementation
+
+**Which approach?**
 
 **If Subagent-Driven chosen:**
 - **REQUIRED SUB-SKILL:** Use superpowers:subagent-driven-development

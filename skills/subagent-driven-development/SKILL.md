@@ -5,11 +5,11 @@ description: Use when executing implementation plans with independent tasks in t
 
 # Subagent-Driven Development
 
-Execute plan by dispatching a fresh implementer subagent per task, a task review (spec compliance + code quality) after each, and a broad whole-branch review at the end.
+Execute a plan by dispatching a fresh implementer subagent per task, reviewing each task through isolated worktree snapshots, and running a broad whole-worktree review at the end. All implementation changes remain unstaged and uncommitted.
 
 **Why subagents:** You delegate tasks to specialized agents with isolated context. By precisely crafting their instructions and context, you ensure they stay focused and succeed at their task. They should never inherit your session's context or history — you construct exactly what they need. This also preserves your own context for coordination work.
 
-**Core principle:** Fresh subagent per task + task review (spec + quality) + broad final review = high quality, fast iteration
+**Core principle:** Fresh subagent per task + snapshot-isolated task review (spec + quality) + broad final review = high quality without mutating Git history
 
 **Narration:** between tool calls, narrate at most one short line — the
 ledger and the tool results carry the record.
@@ -50,35 +50,37 @@ digraph process {
 
     subgraph cluster_per_task {
         label="Per Task";
-        "Dispatch implementer subagent (./implementer-prompt.md)" [shape=box];
+        "Capture task baseline once" [shape=box];
+        "Dispatch implementer using task baseline" [shape=box];
         "Implementer subagent asks questions?" [shape=diamond];
         "Answer questions, provide context" [shape=box];
-        "Implementer subagent implements, tests, commits, self-reviews" [shape=box];
-        "Write diff file, dispatch task reviewer subagent (./task-reviewer-prompt.md)" [shape=box];
+        "Implementer implements, tests, self-reviews" [shape=box];
+        "Capture after snapshot; write diff file; dispatch task reviewer" [shape=box];
         "Task reviewer reports spec ✅ and quality approved?" [shape=diamond];
         "Dispatch fix subagent for Critical/Important findings" [shape=box];
         "Mark task complete in todo list and progress ledger" [shape=box];
     }
 
-    "Read plan, note context and global constraints, create todos" [shape=box];
+    "Read plan, note constraints, create todos, capture initial snapshot" [shape=box];
     "More tasks remain?" [shape=diamond];
     "Dispatch final code reviewer subagent (../requesting-code-review/code-reviewer.md)" [shape=box];
-    "Use superpowers:finishing-a-development-branch" [shape=box style=filled fillcolor=lightgreen];
+    "Leave changes uncommitted and summarize" [shape=box style=filled fillcolor=lightgreen];
 
-    "Read plan, note context and global constraints, create todos" -> "Dispatch implementer subagent (./implementer-prompt.md)";
-    "Dispatch implementer subagent (./implementer-prompt.md)" -> "Implementer subagent asks questions?";
+    "Read plan, note constraints, create todos, capture initial snapshot" -> "Capture task baseline once";
+    "Capture task baseline once" -> "Dispatch implementer using task baseline";
+    "Dispatch implementer using task baseline" -> "Implementer subagent asks questions?";
     "Implementer subagent asks questions?" -> "Answer questions, provide context" [label="yes"];
-    "Answer questions, provide context" -> "Dispatch implementer subagent (./implementer-prompt.md)";
-    "Implementer subagent asks questions?" -> "Implementer subagent implements, tests, commits, self-reviews" [label="no"];
-    "Implementer subagent implements, tests, commits, self-reviews" -> "Write diff file, dispatch task reviewer subagent (./task-reviewer-prompt.md)";
-    "Write diff file, dispatch task reviewer subagent (./task-reviewer-prompt.md)" -> "Task reviewer reports spec ✅ and quality approved?";
+    "Answer questions, provide context" -> "Dispatch implementer using task baseline";
+    "Implementer subagent asks questions?" -> "Implementer implements, tests, self-reviews" [label="no"];
+    "Implementer implements, tests, self-reviews" -> "Capture after snapshot; write diff file; dispatch task reviewer";
+    "Capture after snapshot; write diff file; dispatch task reviewer" -> "Task reviewer reports spec ✅ and quality approved?";
     "Task reviewer reports spec ✅ and quality approved?" -> "Dispatch fix subagent for Critical/Important findings" [label="no"];
-    "Dispatch fix subagent for Critical/Important findings" -> "Write diff file, dispatch task reviewer subagent (./task-reviewer-prompt.md)" [label="re-review"];
+    "Dispatch fix subagent for Critical/Important findings" -> "Capture after snapshot; write diff file; dispatch task reviewer" [label="re-review"];
     "Task reviewer reports spec ✅ and quality approved?" -> "Mark task complete in todo list and progress ledger" [label="yes"];
     "Mark task complete in todo list and progress ledger" -> "More tasks remain?";
-    "More tasks remain?" -> "Dispatch implementer subagent (./implementer-prompt.md)" [label="yes"];
+    "More tasks remain?" -> "Capture task baseline once" [label="yes"];
     "More tasks remain?" -> "Dispatch final code reviewer subagent (../requesting-code-review/code-reviewer.md)" [label="no"];
-    "Dispatch final code reviewer subagent (../requesting-code-review/code-reviewer.md)" -> "Use superpowers:finishing-a-development-branch";
+    "Dispatch final code reviewer subagent (../requesting-code-review/code-reviewer.md)" -> "Leave changes uncommitted and summarize";
 }
 ```
 
@@ -96,6 +98,27 @@ before execution begins, not one interrupt per discovery mid-plan. If the
 scan is clean, proceed without comment. The review loop remains the net for
 conflicts that only emerge from implementation.
 
+## Snapshot Contract
+
+The controller owns all Git inspection. Implementers and fixers only edit,
+test, self-review, and report:
+
+1. At workflow start, capture `INITIAL_SNAPSHOT` with
+   `scripts/worktree-snapshot`.
+2. Immediately before a task's first implementer dispatch, capture
+   `BEFORE_SNAPSHOT` once. Preserve that same baseline through questions,
+   redispatches, fixes, and re-reviews for the task.
+3. After implementation or fixes, capture `AFTER_SNAPSHOT`.
+4. Generate the task review package with
+   `scripts/review-package BEFORE_SNAPSHOT AFTER_SNAPSHOT`.
+5. After all task reviews pass, capture `FINAL_SNAPSHOT` and review
+   `INITIAL_SNAPSHOT..FINAL_SNAPSHOT`.
+6. Leave the working tree unstaged and uncommitted at handoff.
+
+The snapshot helper uses a temporary index. It captures tracked edits,
+deletions, and non-ignored untracked files without changing the real index,
+HEAD, branch, or commit history.
+
 ## Model Selection
 
 Use the least powerful model that can handle each role to conserve cost and increase speed.
@@ -105,7 +128,7 @@ Use the least powerful model that can handle each role to conserve cost and incr
 **Integration and judgment tasks** (multi-file coordination, pattern matching, debugging): use a standard model.
 
 **Architecture and design tasks**: use the most capable available model.
-The final whole-branch review is one of these — dispatch it on the most
+The final whole-worktree review is one of these — dispatch it on the most
 capable available model, not the session default.
 
 **Review tasks**: choose the model with the same judgment, scaled to the
@@ -133,7 +156,7 @@ that implementer. Single-file mechanical fixes also take the cheapest tier.
 
 Implementer subagents report one of four statuses. Handle each appropriately:
 
-**DONE:** Generate the review package (`scripts/review-package BASE HEAD`, from this skill's directory — it prints the unique file path it wrote; BASE is the commit you recorded before dispatching the implementer — never `HEAD~1`, which silently drops all but the last commit of a multi-commit task), then dispatch the task reviewer with the printed path.
+**DONE:** Capture the after-task snapshot with `scripts/worktree-snapshot`, then generate the review package with `scripts/review-package BEFORE_SNAPSHOT AFTER_SNAPSHOT`. `BEFORE_SNAPSHOT` is the tree captured immediately before dispatching the implementer. This isolates the task without staging or committing any change.
 
 **DONE_WITH_CONCERNS:** The implementer completed the work but flagged doubts. Read the concerns before proceeding. If the concerns are about correctness or scope, address them before review. If they're observations (e.g., "this file is getting large"), note them and proceed to review.
 
@@ -159,7 +182,7 @@ review — send it back to the implementer and re-review.
 ## Constructing Reviewer Prompts
 
 Per-task reviews are task-scoped gates. The broad review happens once, at the
-final whole-branch review. When you fill a reviewer template:
+final whole-worktree review. When you fill a reviewer template:
 
 - Do not add open-ended directives like "check all uses" or "run race tests
   if useful" without a concrete, task-specific reason
@@ -178,14 +201,13 @@ final whole-branch review. When you fill a reviewer template:
   Y"). The reviewer's template already carries the process rules (YAGNI,
   test hygiene, review method) — the constraints block is for what THIS
   project's spec demands.
-- Hand the reviewer its diff as a file: run this skill's
-  `scripts/review-package BASE HEAD` and pass the reviewer the file path
-  it prints (or, without bash: `git log --oneline`, `git diff --stat`,
-  and `git diff -U10` for the range, redirected to one uniquely named
-  file). The output never enters your own context, and the reviewer sees
-  the commit list, stat summary, and full diff with context in one Read
-  call. Use the BASE you recorded before dispatching the implementer —
-  never `HEAD~1`, which silently truncates multi-commit tasks.
+- Hand the reviewer its diff as a file: capture worktree trees before and
+  after the task with `scripts/worktree-snapshot`, run
+  `scripts/review-package BEFORE_SNAPSHOT AFTER_SNAPSHOT`, and pass the
+  printed file path. The helper uses a temporary index and does not mutate
+  the real index, HEAD, branch, or commit history. The reviewer sees the
+  snapshot identifiers, stat summary, and full diff with context in one
+  Read call.
 - A dispatch prompt describes one task, not the session's history. Do not
   paste accumulated prior-task summaries ("state after Tasks 1-3") into
   later dispatches — a real session's dispatch hit 42k chars of which 99%
@@ -193,25 +215,27 @@ final whole-branch review. When you fill a reviewer template:
   touches, and the global constraints. Nothing else.
 - Dispatch fix subagents for Critical and Important findings. Record Minor
   findings in the progress ledger as you go, and point the final
-  whole-branch review at that list so it can triage which must be fixed
-  before merge. A roll-up nobody reads is a silent discard.
+  whole-worktree review at that list so it can triage which must be fixed
+  before handoff. A roll-up nobody reads is a silent discard.
 - A finding labeled plan-mandated — or any finding that conflicts with
   what the plan's text requires — is the human's decision, like any plan
   contradiction: present the finding and the plan text, ask which governs.
   Do not dismiss the finding because the plan mandates it, and do not
   dispatch a fix that contradicts the plan without asking.
-- The final whole-branch review gets a package too: run
-  `scripts/review-package MERGE_BASE HEAD` (MERGE_BASE = the commit the
-  branch started from, e.g. `git merge-base main HEAD`) and include the
-  printed path in the final review dispatch, so the final reviewer reads
-  one file instead of re-deriving the branch diff with git commands.
+- The final whole-worktree review gets a package too: run
+  `scripts/review-package INITIAL_SNAPSHOT FINAL_SNAPSHOT` and include the
+  printed path in the final review dispatch. `INITIAL_SNAPSHOT` is captured
+  before Task 1 and `FINAL_SNAPSHOT` after all task-review fixes, so
+  pre-existing user changes are excluded and all implementation work stays
+  uncommitted. Fill the code-reviewer template's `BASE_SHA` and `HEAD_SHA`
+  slots with these tree identifiers; `git diff` accepts tree objects.
 - Every fix dispatch carries the implementer contract: the fix subagent
   re-runs the tests covering its change and reports the results. Name the
   covering test files in the dispatch — a one-line fix does not need the
   whole suite. Before re-dispatching the reviewer, confirm the fix report
   contains the covering tests, the command run, and the output; dispatch
   the re-review once all three are present.
-- If the final whole-branch review returns findings, dispatch ONE fix
+- If the final whole-worktree review returns findings, dispatch ONE fix
   subagent with the complete findings list — not one fixer per finding.
   Per-finding fixers each rebuild context and re-run suites; a real
   session's final-review fix wave cost more than all its tasks combined.
@@ -236,7 +260,7 @@ and is re-read on every later turn. Hand artifacts over as files:
 - **Report file:** name the implementer's report file after the brief
   (brief `…/task-N-brief.md` → report `…/task-N-report.md`) and put it in
   the dispatch prompt. The implementer writes the full report there and
-  returns only status, commits, a one-line test summary, and concerns.
+  returns only status, changed files, a one-line test summary, and concerns.
 - **Reviewer inputs:** the task reviewer gets three paths — the same brief
   file, the report file, and the review package — plus the global
   constraints that bind the task.
@@ -245,29 +269,37 @@ and is re-read on every later turn. Hand artifacts over as files:
 
 ## Durable Progress
 
-Conversation memory does not survive compaction. In real sessions,
-controllers that lost their place have re-dispatched entire completed task
-sequences — the single most expensive failure observed. Track progress in
-a ledger file, not only in todos.
+Conversation memory does not survive compaction. Track completed tasks and
+their snapshot ranges in a ledger file, not only in todos. Snapshot trees
+preserve review boundaries while the implementation remains in the working
+tree.
 
 - At skill start, check for a ledger:
   `cat "$(git rev-parse --show-toplevel)/.superpowers/sdd/progress.md"`. Tasks listed there
   as complete are DONE — do not re-dispatch them; resume at the first task
   not marked complete.
+- Immediately after capturing `INITIAL_SNAPSHOT`, record
+  `Workflow: initial snapshot <full-initial-tree-id>` in the ledger. On resume, reuse
+  that recorded snapshot instead of replacing it.
+- Immediately after capturing a task's baseline and before its first
+  dispatch, record
+  `Task N: in_progress (before snapshot <full-before-tree-id>)`. On resume or
+  redispatch, reuse that baseline.
 - When a task's review comes back clean, append one line to the ledger in
   the same message as your other bookkeeping:
-  `Task N: complete (commits <base7>..<head7>, review clean)`.
-- The ledger is your recovery map: the commits it names exist in git even
-  when your context no longer remembers creating them. After compaction,
-  trust the ledger and `git log` over your own recollection.
-- `git clean -fdx` will destroy the ledger (it's git-ignored scratch); if
-  that happens, recover from `git log`.
+  `Task N: complete (snapshots <full-before-tree-id>..<full-after-tree-id>, review clean)`.
+- The ledger and current working tree are the recovery map. After
+  compaction, trust completed entries and resume at the first incomplete
+  task; do not re-dispatch completed work.
+- Never run cleanup, reset, checkout, or staging commands as part of this
+  workflow. They can destroy or obscure the uncommitted implementation and
+  the git-ignored ledger.
 
 ## Prompt Templates
 
 - [implementer-prompt.md](implementer-prompt.md) - Dispatch implementer subagent
 - [task-reviewer-prompt.md](task-reviewer-prompt.md) - Dispatch task reviewer subagent (spec compliance + code quality)
-- Final whole-branch review: use superpowers:requesting-code-review's [code-reviewer.md](../requesting-code-review/code-reviewer.md)
+- Final whole-worktree review: use superpowers:requesting-code-review's [code-reviewer.md](../requesting-code-review/code-reviewer.md)
 
 ## Example Workflow
 
@@ -279,7 +311,7 @@ You: I'm using Subagent-Driven Development to execute this plan.
 
 Task 1: Hook installation script
 
-[Run task-brief for Task 1; dispatch implementer with brief + report paths + context]
+[Capture before snapshot; run task-brief; dispatch implementer with brief + report paths + context]
 
 Implementer: "Before I begin - should the hook be installed at user or system level?"
 
@@ -290,9 +322,9 @@ Implementer: "Got it. Implementing now..."
   - Implemented install-hook command
   - Added tests, 5/5 passing
   - Self-review: Found I missed --force flag, added it
-  - Committed
+  - Left all changes unstaged and uncommitted
 
-[Run review-package, dispatch task reviewer with the printed path]
+[Capture after snapshot, run review-package, dispatch task reviewer]
 Task reviewer: Spec ✅ - all requirements met, nothing extra.
   Strengths: Good test coverage, clean. Issues: None. Task quality: Approved.
 
@@ -300,16 +332,16 @@ Task reviewer: Spec ✅ - all requirements met, nothing extra.
 
 Task 2: Recovery modes
 
-[Run task-brief for Task 2; dispatch implementer with brief + report paths + context]
+[Capture before snapshot; run task-brief; dispatch implementer with brief + report paths + context]
 
 Implementer: [No questions, proceeds]
 Implementer:
   - Added verify/repair modes
   - 8/8 tests passing
   - Self-review: All good
-  - Committed
+  - Left all changes unstaged and uncommitted
 
-[Run review-package, dispatch task reviewer with the printed path]
+[Capture after snapshot, run review-package, dispatch task reviewer]
 Task reviewer: Spec ❌:
   - Missing: Progress reporting (spec says "report every 100 items")
   - Extra: Added --json flag (not requested)
@@ -327,15 +359,15 @@ Task reviewer: Spec ✅. Task quality: Approved.
 
 [After all tasks]
 [Dispatch final code-reviewer]
-Final reviewer: All requirements met, ready to merge
+Final reviewer: All requirements met, ready for handoff
 
-Done!
+Done — working tree left uncommitted for the human partner.
 ```
 
 ## Advantages
 
 **vs. Manual execution:**
-- Subagents follow TDD naturally
+- Subagents follow each task's declared testing mode consistently
 - Fresh context per task (no confusion)
 - Parallel-safe (subagents don't interfere)
 - Subagent can ask questions (before AND during work)
@@ -368,6 +400,8 @@ Done!
 
 **Never:**
 - Start implementation on main/master branch without explicit user consent
+- Stage files, create commits, or mutate HEAD/branch state; task and final
+  handoffs remain unstaged and uncommitted
 - Skip task review, or accept a report missing either verdict (spec compliance AND task quality are both required)
 - Proceed with unfixed issues
 - Dispatch multiple implementation subagents in parallel (conflicts)
@@ -382,11 +416,11 @@ Done!
   dispatch prompt ("treat it as Minor at most") — the plan's example code is
   a starting point, not evidence that its weaknesses were chosen
 - Dispatch a task reviewer without a diff file — generate it first
-  (`scripts/review-package BASE HEAD`) and name the printed path in the
+  (`scripts/review-package BEFORE_SNAPSHOT AFTER_SNAPSHOT`) and name the printed path in the
   prompt
 - Move to next task while the review has open Critical/Important issues
 - Re-dispatch a task the progress ledger already marks complete — check
-  the ledger (and `git log`) after any compaction or resume
+  the ledger and current working tree after any compaction or resume
 
 **If subagent asks questions:**
 - Answer clearly and completely
@@ -408,11 +442,10 @@ Done!
 **Required workflow skills:**
 - **superpowers:using-git-worktrees** - Ensures isolated workspace (creates one or verifies existing)
 - **superpowers:writing-plans** - Creates the plan this skill executes
-- **superpowers:requesting-code-review** - Code review template for the final whole-branch review
-- **superpowers:finishing-a-development-branch** - Complete development after all tasks
+- **superpowers:requesting-code-review** - Code review template for the final whole-worktree review
 
-**Subagents should use:**
-- **superpowers:test-driven-development** - Subagents follow TDD for each task
+**Conditional workflow skill:**
+- **superpowers:test-driven-development** - Use only when the task explicitly declares `Testing: TDD`; standard-testing tasks do not invoke it or require RED/GREEN evidence
 
 **Alternative workflow:**
 - **superpowers:executing-plans** - Use for parallel session instead of same-session execution

@@ -43,3 +43,19 @@ Wait for the user's response. If they request changes, make them and re-run the 
 - If the work is larger or uncertain, invoke `superpowers:writing-plans` to create a detailed implementation plan
 - If a larger design was already approved in chat, you may move straight into `superpowers:writing-plans` without creating a spec first
 - If you already wrote a design doc, the user must still review it before you begin any follow-up work
+
+## Plan Execution Handoff
+
+Invoking `superpowers:writing-plans` authorizes plan creation, not plan
+execution. Preserve the two authorization states recorded during brainstorming:
+
+- With explicit `continuous-execution`, continue after the plan using the
+  user's selected workflow, or `superpowers:subagent-driven-development` when
+  no workflow was selected.
+- Without `continuous-execution`, return the saved plan path and the execution
+  choices from `superpowers:writing-plans`, ask the user to choose, and end the
+  turn. Start implementation only after that choice or an explicit request to
+  execute the plan.
+
+A direct-start-only override skips brainstorming dialogue; it does not skip the
+plan execution handoff.

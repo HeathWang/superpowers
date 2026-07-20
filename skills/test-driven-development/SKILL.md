@@ -1,6 +1,6 @@
 ---
 name: test-driven-development
-description: Use when request for TDD
+description: Use when the human partner explicitly requests TDD or an approved specification requires test-driven development
 ---
 
 # Test-Driven Development (TDD)
@@ -15,13 +15,15 @@ Write the test first. Watch it fail. Write minimal code to pass.
 
 ## When to Use
 
-**Always:**
-- New features
-- Bug fixes
-- Refactoring
-- Behavior changes
+Use this skill only when:
+- The human partner explicitly requests TDD, test-first development, or RED-GREEN-REFACTOR
+- An approved specification or implementation plan explicitly requires TDD
 
-**Exceptions (ask your human partner):**
+Do not infer TDD from the kind of work. New features, bug fixes, refactoring,
+behavior changes, or a general requirement to add tests use the project's
+standard testing workflow unless TDD was explicitly selected.
+
+**When TDD was selected, exceptions require the human partner's approval:**
 - Throwaway prototypes
 - Generated code
 - Configuration files

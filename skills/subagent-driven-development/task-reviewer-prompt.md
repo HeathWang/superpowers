@@ -15,7 +15,7 @@ Subagent (general-purpose):
   prompt: |
     You are reviewing one task's implementation: first whether it matches its
     requirements, then whether it is well-built. This is a task-scoped gate,
-    not a merge review — a broad whole-branch review happens separately after
+    not a merge review — a broad whole-worktree review happens separately after
     all tasks are complete.
 
     ## What Was Requested
@@ -31,17 +31,18 @@ Subagent (general-purpose):
 
     ## Diff Under Review
 
-    **Base:** [BASE_SHA]
-    **Head:** [HEAD_SHA]
+    **Before snapshot:** [BEFORE_SNAPSHOT]
+    **After snapshot:** [AFTER_SNAPSHOT]
     **Diff file:** [DIFF_FILE]
 
-    Read the diff file once — it contains the commit list, a stat summary,
-    and the full diff with surrounding context, and it is your view of the
+    Read the diff file once — it contains the snapshot identifiers, a stat
+    summary, and the full diff with surrounding context, and it is your view of the
     change. The diff's context lines ARE the changed files: do not Read a
     changed file separately unless a hunk you must judge is cut off
     mid-function — and say so in your report. Do not re-run git commands.
     If the diff file is missing, fetch the diff yourself:
-    `git diff --stat [BASE_SHA]..[HEAD_SHA]` and `git diff [BASE_SHA]..[HEAD_SHA]`.
+    `git diff --stat [BEFORE_SNAPSHOT] [AFTER_SNAPSHOT]` and
+    `git diff [BEFORE_SNAPSHOT] [AFTER_SNAPSHOT]`.
     Do not crawl the broader codebase. Inspect code outside the diff only
     to evaluate a concrete risk you can name — one focused check per named
     risk, and name both the risk and what you checked in your report.
@@ -63,14 +64,18 @@ Subagent (general-purpose):
 
     ## Tests
 
-    The implementer already ran the tests and reported results with TDD
-    evidence for exactly this code. Do not re-run the suite to confirm their
-    report. Run a test only when reading the code raises a specific doubt
-    that no existing run answers — and then a focused test, never a
-    package-wide suite, race detector run, or repeated/high-count loop. If
-    heavy validation seems warranted, recommend it in your report instead of
-    running it. If you cannot run commands in this environment, name the
-    test you would run.
+    The implementer already ran the tests and reported results for exactly
+    this code. TDD tasks also include RED/GREEN evidence; standard-testing
+    tasks do not require it. Treat a missing `Testing` field as Standard unless
+    the task otherwise explicitly requires TDD. Do not infer TDD from the kind
+    of change.
+
+    Do not re-run the suite merely to confirm the report. Run a test only when
+    reading the code raises a specific doubt that no existing run answers —
+    and then a focused test, never a package-wide suite, race detector run, or
+    repeated/high-count loop. If heavy validation seems warranted, recommend
+    it in your report instead of running it. If you cannot run commands in
+    this environment, name the test you would run.
 
     Warnings or other noise in the implementer's reported test output are
     findings — test output should be pristine.
@@ -175,11 +180,11 @@ Subagent (general-purpose):
   are already in this template)
 - `[REPORT_FILE]` — REQUIRED: the file the implementer wrote its detailed
   report to
-- `[BASE_SHA]` — commit before this task
-- `[HEAD_SHA]` — current commit
+- `[BEFORE_SNAPSHOT]` — worktree snapshot captured before this task
+- `[AFTER_SNAPSHOT]` — worktree snapshot captured after this task
 - `[DIFF_FILE]` — REQUIRED: the path the controller wrote the review
-  package to (`scripts/review-package BASE HEAD` prints the unique path it
-  wrote; the package never enters the controller's context)
+  package to (`scripts/review-package BEFORE_SNAPSHOT AFTER_SNAPSHOT` prints
+  the unique path it wrote; the package never enters the controller's context)
 
 **Reviewer returns:** Spec Compliance verdict (✅/❌/⚠️), Strengths, Issues
 (Critical/Important/Minor), Task quality verdict

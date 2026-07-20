@@ -35,17 +35,27 @@ Subagent (general-purpose):
     1. Implement exactly what the task specifies
     2. Write tests (following TDD if task says to)
     3. Verify implementation works
-    4. Commit your work
-    5. Self-review (see below)
-    6. Report back
+    4. Self-review (see below)
+    5. Report back
+
+    The task's explicit `Testing` field or wording is authoritative. Invoke
+    `superpowers:test-driven-development` and report RED/GREEN evidence only
+    when it declares TDD. If the field is absent, use standard testing unless
+    the task otherwise explicitly requires TDD. Never infer TDD from a feature,
+    bug fix, refactor, behavior change, or general request for tests.
 
     Work from: [directory]
+
+    Leave every change you produce unstaged and uncommitted. Preserve any
+    pre-existing index state exactly. Do not run `git add`, `git commit`, or
+    any command that changes HEAD, a branch, or the real index. The controller
+    captures read-only worktree snapshots for review and recovery.
 
     **While you work:** If you encounter something unexpected or unclear, **ask questions**.
     It's always OK to pause and clarify. Don't guess or make assumptions.
 
     While iterating, run the focused test for what you're changing; run the
-    full suite once before committing, not after every edit.
+    full suite once before reporting, not after every edit.
 
     ## Code Organization
 
@@ -125,7 +135,7 @@ Subagent (general-purpose):
     Then report back with ONLY (under 15 lines — the detail lives in the
     report file):
     - **Status:** DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
-    - Commits created (short SHA + subject)
+    - Files changed
     - One-line test summary (e.g. "14/14 passing, output pristine")
     - Your concerns, if any
     - The report file path

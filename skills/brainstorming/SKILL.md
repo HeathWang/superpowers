@@ -39,6 +39,36 @@ Direct-start mode requires an explicit user override that you can quote from the
 - In direct-start mode, infer reasonable constraints from context, state only material assumptions, and ask at most the minimum blocking question
 - Do not treat size, confidence, or file references as implied permission to skip brainstorming
 
+## Plan Handoff Authorization
+
+`direct-start` and `continuous-execution` are independent authorization states.
+Record each only when the user's explicit words support it:
+
+| User wording | `direct-start` | `continuous-execution` |
+|---|---:|---:|
+| "Implement X", "fix Y", or another task verb | no | no |
+| "Start directly", "skip the design", or "just do it" | yes | no |
+| "Continue through completion", "do not pause unless blocked", or a clear equivalent | yes | yes |
+
+<PLAN-HANDOFF-GATE>
+For larger work routed to `superpowers:writing-plans`, plan creation and plan
+execution are separate transitions.
+
+After the plan is saved and self-reviewed:
+
+- If `continuous-execution` is active, continue without an execution-choice
+  question. Use the user's specified execution workflow; if none was specified,
+  invoke `superpowers:subagent-driven-development` as the recommended default.
+- Otherwise, the handoff response consists of the saved plan path, the
+  execution choices required by `superpowers:writing-plans`, and one question
+  asking the user to choose. End the turn there.
+
+On the second path, implementation starts only after the user selects an
+execution approach or explicitly asks to execute the plan. Design approval,
+spec approval, a direct-start-only override, task verbs, urgency, fresh
+context, and a "recommended" label do not satisfy this execution predicate.
+</PLAN-HANDOFF-GATE>
+
 ## Anti-Pattern: "This Is Too Simple To Need A Design"
 
 By default, every project goes through this process. A todo list, a single-function utility, a config change — all of them. "Simple" projects are where unexamined assumptions cause the most wasted work. The design can be short (a few sentences for truly simple projects), but you MUST still present it and get approval.
@@ -50,14 +80,14 @@ For pressure cases, rationalizations, and self-checks, see [anti-rationalization
 You MUST create a task for each checklist item and complete them in order. Skip dialogue-only items when direct-start is active, skip design-doc-only items when no written spec is needed, and apply each item's own skip conditions where stated.
 
 1. **Explore project context** — check the relevant files, docs, and existing patterns
-2. **Check for explicit direct-start** — only switch if you can quote the user's override or a clear equivalent in their language; offer visual companion in its own message only when visual questions are likely
+2. **Check explicit authorization states** — record `direct-start` and `continuous-execution` independently from words you can quote; offer visual companion in its own message only when visual questions are likely
 3. **Ask clarifying questions** — in the default path, ask one at a time until purpose, constraints, and success criteria are clear
 4. **Propose approaches** — in the default path, present 2-3 options with trade-offs and a recommendation
 5. **Present design** — in the default path, present the design in sections and get approval
 6. **Judge complexity** — decide whether the work is small enough to skip both durable planning and a written spec, or complex enough to need a written design doc and/or `superpowers:writing-plans`
 7. **Write design doc when needed** — save the validated design only when it adds durable value, then self-review it for placeholders, contradictions, scope drift, and ambiguity
 8. **User reviews written spec** — if you wrote a design doc, stop and wait for the user's approval before planning or follow-up work
-9. **Route into follow-up work** — if the work is small, local, and non-complex, continue directly from the approved design on the default path, or directly after direct-start context analysis on the direct-start path, and later follow the closing discipline from `superpowers:executing-plans`; otherwise use `superpowers:writing-plans`
+9. **Route into follow-up work** — if the work is small, local, and non-complex, continue directly from the approved design on the default path, or directly after direct-start context analysis on the direct-start path, and later follow the closing discipline from `superpowers:executing-plans`; otherwise use `superpowers:writing-plans`, then apply the plan handoff gate before any implementation
 10. **Offer code-review escalation** — after final self-review and verification on the small direct path, ask whether the user wants the `superpowers:requesting-code-review` escalation workflow unless they already accepted, declined, or prohibited it. If yes, invoke only `superpowers:requesting-code-review` before dispatching any review subagent; do not also invoke generic review skills or recreate its workflow from memory
 
 ## Process Flow
@@ -81,7 +111,10 @@ digraph brainstorming {
     "Read changed files,\nself-review, and verify" [shape=box];
     "User wants\ncode review?" [shape=diamond];
     "Invoke superpowers:requesting-code-review skill" [shape=box];
-    "Invoke writing-plans skill" [shape=doublecircle];
+    "Invoke writing-plans skill" [shape=box];
+    "Continuous execution\nexplicitly authorized?" [shape=diamond];
+    "Present execution choices\nand STOP" [shape=doublecircle];
+    "Use requested executor\nor recommended SDD" [shape=doublecircle];
     "Complete follow-up work" [shape=doublecircle];
 
     "Explore project context" -> "User explicitly says\nstart directly?";
@@ -103,6 +136,9 @@ digraph brainstorming {
     "User reviews spec?" -> "Write design doc" [label="changes requested"];
     "Write design doc" -> "User reviews spec?";
     "User reviews spec?" -> "Invoke writing-plans skill" [label="approved"];
+    "Invoke writing-plans skill" -> "Continuous execution\nexplicitly authorized?";
+    "Continuous execution\nexplicitly authorized?" -> "Present execution choices\nand STOP" [label="no"];
+    "Continuous execution\nexplicitly authorized?" -> "Use requested executor\nor recommended SDD" [label="yes"];
     "Start implementation directly" -> "Read changed files,\nself-review, and verify";
     "Read changed files,\nself-review, and verify" -> "User wants\ncode review?";
     "User wants\ncode review?" -> "Invoke superpowers:requesting-code-review skill" [label="yes"];
@@ -111,7 +147,7 @@ digraph brainstorming {
 }
 ```
 
-**Routing depends on complexity, not preference alone.** In direct-start mode, make that judgment from context yourself. Otherwise, make it after design approval. If you are genuinely unsure whether the work is still "small", bias toward `superpowers:writing-plans`. On the small direct path, borrow the final self-review and verification discipline from `superpowers:executing-plans`; do not invoke that skill unless a written implementation plan actually exists.
+**Routing depends on complexity, not preference alone.** In direct-start mode, make that judgment from context yourself. Otherwise, make it after design approval. If you are genuinely unsure whether the work is still "small", bias toward `superpowers:writing-plans`. On the small direct path, borrow the final self-review and verification discipline from `superpowers:executing-plans`; do not invoke that skill unless a written implementation plan actually exists. On the plan path, use the plan handoff gate: direct-start alone does not authorize execution after plan creation.
 
 ## The Process
 
@@ -138,6 +174,7 @@ digraph brainstorming {
 - Scale each section to its complexity: a few sentences if straightforward, up to 200-300 words if nuanced
 - In the default path, ask after each section whether it looks right so far
 - Cover: architecture, components, data flow, error handling, testing
+- Treat TDD as selected only when the human partner explicitly requests it or an approved spec requires it; discussing testing does not select TDD
 - Be ready to go back and clarify if something doesn't make sense
 
 **Complexity routing:**
@@ -147,6 +184,7 @@ digraph brainstorming {
 - Cross-cutting, high-risk, multi-step, or rollback-sensitive work should use `superpowers:writing-plans`
 - For larger or uncertain work, `superpowers:writing-plans` is the default next step; a design doc is optional and never a prerequisite for that transition
 - If a larger design was approved in chat, you may move straight into `superpowers:writing-plans`; do not create a spec afterward unless it adds durable value
+- After `superpowers:writing-plans` completes, either continue under an explicit `continuous-execution` authorization or present its execution choices and stop
 - Write a design doc only when it adds durable value; do not create one just because brainstorming happened
 
 **Design for isolation and clarity:**

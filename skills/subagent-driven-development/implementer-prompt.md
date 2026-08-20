@@ -35,27 +35,29 @@ Subagent (general-purpose):
     1. Implement exactly what the task specifies
     2. Write tests (following TDD if task says to)
     3. Verify implementation works
-    4. Self-review (see below)
-    5. Report back
-
-    The task's explicit `Testing` field or wording is authoritative. Invoke
-    `superpowers:test-driven-development` and report RED/GREEN evidence only
-    when it declares TDD. If the field is absent, use standard testing unless
-    the task otherwise explicitly requires TDD. Never infer TDD from a feature,
-    bug fix, refactor, behavior change, or general request for tests.
+    4. Commit your work
+    5. Self-review (see below)
+    6. Report back
 
     Work from: [directory]
-
-    Leave every change you produce unstaged and uncommitted. Preserve any
-    pre-existing index state exactly. Do not run `git add`, `git commit`, or
-    any command that changes HEAD, a branch, or the real index. The controller
-    captures read-only worktree snapshots for review and recovery.
 
     **While you work:** If you encounter something unexpected or unclear, **ask questions**.
     It's always OK to pause and clarify. Don't guess or make assumptions.
 
     While iterating, run the focused test for what you're changing; run the
-    full suite once before reporting, not after every edit.
+    full suite once before committing, not after every edit.
+
+    ## You Do Not Dispatch Subagents
+
+    Do all of this task's work yourself. Never spawn a subagent to
+    implement part of the task, and above all never spawn a reviewer to
+    check your work. Self-review (below) means reading your own diff.
+    Review is the controller's job: after you report, it dispatches a
+    fresh reviewer against your diff. A reviewer you spawn duplicates
+    that review at full cost, and its approval counts for nothing in
+    the process. If you catch yourself thinking "an independent review
+    would strengthen my report" — that review is already scheduled.
+    Report instead.
 
     ## Code Organization
 
@@ -116,9 +118,12 @@ Subagent (general-purpose):
 
     ## After Review Findings
 
-    If a reviewer finds issues and you fix them, re-run the tests that cover
-    the amended code and append the results to your report file. Reviewers
-    will not re-run tests for you — your report is the test evidence.
+    If the task review finds issues, you will be resumed with the findings.
+    Fix them, re-run the tests that cover the amended code, and append a fix
+    report to your report file: what you changed, the covering tests you
+    ran, the command, and the output. Reviewers will not re-run tests for
+    you — your report is the test evidence. Then reply with the same short
+    status contract as your first report.
 
     ## Report Format
 
@@ -135,7 +140,7 @@ Subagent (general-purpose):
     Then report back with ONLY (under 15 lines — the detail lives in the
     report file):
     - **Status:** DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
-    - Files changed
+    - Commits created (short SHA + subject)
     - One-line test summary (e.g. "14/14 passing, output pristine")
     - Your concerns, if any
     - The report file path

@@ -15,7 +15,7 @@ Subagent (general-purpose):
   prompt: |
     You are reviewing one task's implementation: first whether it matches its
     requirements, then whether it is well-built. This is a task-scoped gate,
-    not a merge review — a broad whole-worktree review happens separately after
+    not a merge review — a broad whole-branch review happens separately after
     all tasks are complete.
 
     ## What Was Requested
@@ -31,18 +31,17 @@ Subagent (general-purpose):
 
     ## Diff Under Review
 
-    **Before snapshot:** [BEFORE_SNAPSHOT]
-    **After snapshot:** [AFTER_SNAPSHOT]
+    **Base:** [BASE_SHA]
+    **Head:** [HEAD_SHA]
     **Diff file:** [DIFF_FILE]
 
-    Read the diff file once — it contains the snapshot identifiers, a stat
-    summary, and the full diff with surrounding context, and it is your view of the
+    Read the diff file once — it contains the commit list, a stat summary,
+    and the full diff with surrounding context, and it is your view of the
     change. The diff's context lines ARE the changed files: do not Read a
     changed file separately unless a hunk you must judge is cut off
     mid-function — and say so in your report. Do not re-run git commands.
     If the diff file is missing, fetch the diff yourself:
-    `git diff --stat [BEFORE_SNAPSHOT] [AFTER_SNAPSHOT]` and
-    `git diff [BEFORE_SNAPSHOT] [AFTER_SNAPSHOT]`.
+    `git diff --stat [BASE_SHA]..[HEAD_SHA]` and `git diff [BASE_SHA]..[HEAD_SHA]`.
     Do not crawl the broader codebase. Inspect code outside the diff only
     to evaluate a concrete risk you can name — one focused check per named
     risk, and name both the risk and what you checked in your report.
@@ -52,6 +51,15 @@ Subagent (general-purpose):
 
     Your review is read-only on this checkout. Do not mutate the working
     tree, the index, HEAD, or branch state in any way.
+
+    ## You Do Not Dispatch Subagents
+
+    Do all of this review yourself. Never spawn a subagent to review part
+    of the diff, and never spawn another reviewer for a second opinion.
+    This process already provides every review seat the work gets; a
+    reviewer you spawn duplicates one of them at full cost, and its
+    verdict counts for nothing. If the diff feels too large for one
+    pass, review it in passes yourself and say so in your report.
 
     ## Do Not Trust the Report
 
@@ -64,21 +72,24 @@ Subagent (general-purpose):
 
     ## Tests
 
-    The implementer already ran the tests and reported results for exactly
-    this code. TDD tasks also include RED/GREEN evidence; standard-testing
-    tasks do not require it. Treat a missing `Testing` field as Standard unless
-    the task otherwise explicitly requires TDD. Do not infer TDD from the kind
-    of change.
-
-    Do not re-run the suite merely to confirm the report. Run a test only when
-    reading the code raises a specific doubt that no existing run answers —
-    and then a focused test, never a package-wide suite, race detector run, or
-    repeated/high-count loop. If heavy validation seems warranted, recommend
-    it in your report instead of running it. If you cannot run commands in
-    this environment, name the test you would run.
+    The implementer already ran the tests and reported results with TDD
+    evidence for exactly this code. Do not re-run the suite to confirm their
+    report. Run a test only when reading the code raises a specific doubt
+    that no existing run answers — and then a focused test, never a
+    package-wide suite, race detector run, or repeated/high-count loop. If
+    heavy validation seems warranted, recommend it in your report instead of
+    running it. If you cannot run commands in this environment, name the
+    test you would run.
 
     Warnings or other noise in the implementer's reported test output are
     findings — test output should be pristine.
+
+    Evidence you cannot see is not evidence that doesn't exist. If the
+    report or its test evidence looks truncated, or you cannot locate the
+    results it claims, re-read the file at its stated path — and if it is
+    genuinely missing or garbled, report that as a gap for the controller.
+    Re-running the suite to regenerate what you failed to read is not
+    verification; illegibility of the evidence is not invalidation of it.
 
     ## Part 1: Spec Compliance
 
@@ -90,6 +101,12 @@ Subagent (general-purpose):
       "nice to haves"
     - **Misunderstood:** right feature built the wrong way, wrong problem
       solved
+
+    If the brief lists several files each with its own change (a batched
+    dispatch), check the diff against that list file by file: every listed
+    file must have its corresponding hunk. A listed file the diff never
+    touches is a Missing finding, no matter how clean the rest of the
+    batch looks.
 
     If a requirement cannot be verified from this diff alone (it lives in
     unchanged code or spans tasks), report it as a ⚠️ item instead of
@@ -180,14 +197,11 @@ Subagent (general-purpose):
   are already in this template)
 - `[REPORT_FILE]` — REQUIRED: the file the implementer wrote its detailed
   report to
-- `[BEFORE_SNAPSHOT]` — worktree snapshot captured before this task
-- `[AFTER_SNAPSHOT]` — worktree snapshot captured after this task
+- `[BASE_SHA]` — commit before this task
+- `[HEAD_SHA]` — current commit
 - `[DIFF_FILE]` — REQUIRED: the path the controller wrote the review
-  package to (`scripts/review-package BEFORE_SNAPSHOT AFTER_SNAPSHOT` prints
-  the unique path it wrote; the package never enters the controller's context)
+  package to (`scripts/review-package PLAN_FILE BASE HEAD` prints the unique
+  path it wrote; the package never enters the controller's context)
 
 **Reviewer returns:** Spec Compliance verdict (✅/❌/⚠️), Strengths, Issues
 (Critical/Important/Minor), Task quality verdict
-
-A fix dispatch can address spec gaps and quality findings together;
-re-review after fixes covers both verdicts.

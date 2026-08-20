@@ -84,12 +84,14 @@ implementation and test steps.
 
 **Testing:** [Standard, or TDD — name the explicit request/spec requirement when TDD]
 
+**Spec:** [exact path, or `none — requirements: <approved requirements stated once>`]
+
 ## Global Constraints
 
-[The spec's project-wide requirements — version floors, dependency limits,
-naming and copy rules, platform requirements — one line each, with exact
-values copied verbatim from the spec. Every task's requirements implicitly
-include this section.]
+[The requirements authority's project-wide requirements — version floors,
+dependency limits, naming and copy rules, platform requirements — one line
+each, with exact values copied from the spec or approved requirements. Every
+task's requirements implicitly include this section.]
 
 ---
 ```
@@ -189,12 +191,14 @@ Expected: state the concrete behavior and interfaces that should be present in
 the files after this Task, plus the diagnostics result. The checkpoint judges
 the implementation by reading the files; it makes no claim about what other
 changes are or are not present in the working tree. If the execution workflow
-later produces a before/after snapshot package, reviewers may use it as
-additional input; it does not replace reading and understanding the Task
-files.
-Leave every change produced by the plan unstaged and uncommitted, and preserve
-the pre-existing index exactly. Plans contain no `git add` or `git commit`
-steps.
+later produces a review package, reviewers may use it as additional input; it
+does not replace reading and understanding the Task files.
+
+The plan does not prescribe a generic staging or commit policy and contains no
+`git add` or `git commit` steps. The selected execution workflow owns its Git
+lifecycle: Subagent-Driven follows its isolated-worktree and per-task commit
+contract; Inline Execution does not create commits unless the human partner
+explicitly asks for them.
 ````
 
 ## No Placeholders
@@ -212,23 +216,52 @@ Every step must contain the actual content an engineer needs. These are **plan f
 - Complete code in every step — if a step changes code, show the code
 - Exact commands with expected output
 - DRY, YAGNI, the selected testing mode, frequent verification checkpoints
-- Plan-produced changes remain unstaged and uncommitted; pre-existing index state remains untouched
+- Git staging and commit policy belongs to the selected execution workflow;
+  the plan does not override it
 
 ## Self-Review
 
-After writing the complete plan, look at the spec with fresh eyes and check the plan against it. This is a checklist you run yourself — not a subagent dispatch.
+After writing the complete plan, look at its requirements authority with fresh
+eyes and check the plan against it. Use the spec when one exists; otherwise use
+the approved requirements in the plan header and its Global Constraints. This
+is a checklist you run yourself — not a subagent dispatch.
 
-**1. Spec coverage:** Skim each section/requirement in the spec. Can you point to a task that implements it? List any gaps.
+**1. Requirements coverage:** Skim every requirement in the selected authority.
+Can you point to a task that implements it? List any gaps.
 
 **2. Placeholder scan:** Search your plan for red flags — any of the patterns from the "No Placeholders" section above. Fix them.
 
 **3. Type consistency:** Do the types, method signatures, and property names you used in later tasks match what you defined in earlier tasks? A function called `clearLayers()` in Task 3 but `clearFullLayers()` in Task 7 is a bug.
 
-If you find issues, fix them inline. No need to re-review — just fix and move on. If you find a spec requirement with no task, add the task.
+If you find issues, fix them inline. No need to re-review — just fix and move
+on. If you find a requirement with no task, add the task.
+
+## Plan Review
+
+After the complete plan passes Self-Review:
+
+1. Dispatch exactly one read-only general-purpose plan reviewer using
+   `plan-document-reviewer-prompt.md`.
+2. Give it the plan path and exactly one requirements authority:
+   - the spec path, when a spec exists; or
+   - `No spec exists; use the approved requirements in the plan header and the
+     plan's Global Constraints.`
+3. If it reports implementation-blocking findings, fix them in the plan and
+   repeat Self-Review.
+4. Do not dispatch another reviewer by default. Continue to Execution Handoff
+   after the controller's fixes and self-review.
+
+The reviewer is read-only. The controller remains responsible for every plan
+edit.
 
 ## Execution Handoff
 
-After saving the plan, offer execution choice:
+If Brainstorming recorded direct-start, do not show the choices. Select the
+safest suitable executor after Plan Review and continue: prefer
+Subagent-Driven for independent tasks with available subagents; otherwise use
+Inline Execution.
+
+Otherwise, after saving the plan, offer execution choice:
 
 Use this exact response shape so the human partner can copy the plan path:
 

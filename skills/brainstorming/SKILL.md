@@ -1,214 +1,298 @@
 ---
 name: brainstorming
-description: You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements before implementation.
+description: "You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation."
 ---
 
 # Brainstorming Ideas Into Designs
 
-Help turn ideas into designs and, when needed, specs through natural collaborative dialogue.
+Help turn ideas into fully formed designs and specs through natural collaborative dialogue.
 
-Default path: explore the current project context, ask questions one at a time, then present a design and get approval. Direct-start is an explicit opt-out, not the default.
+Start by classifying how much process the request needs, then work
+through your path: understand the context, refine the idea, present a
+design, and get your human partner's approval.
 
 <HARD-GATE>
-Unless the user explicitly authorizes direct-start, do NOT invoke any implementation skill, write any code, scaffold any project, or take any implementation action until you have presented a design and the user has approved it. This applies to EVERY project regardless of perceived simplicity.
+Unless direct-start is active, do NOT invoke any implementation skill, write
+code, scaffold a project, or take implementation action until you have told
+your human partner what you intend and they have approved it. Every normal path
+keeps this approval gate; only explicit direct-start bypasses it.
 </HARD-GATE>
 
-<COMPLETION-GATE>
-On the small direct implementation path, the final response is blocked until requesting-code-review escalation consent has been handled.
+## Direct-Start
 
-Before any final response that claims implementation is complete:
-1. Finish the final self-review and verification pass.
-2. If the user already explicitly requested code review at this point, invoke `superpowers:requesting-code-review` as the sole review-routing skill.
-3. If the user already explicitly declined or prohibited code review, complete normally.
-4. Otherwise ask whether they want the `superpowers:requesting-code-review` escalation workflow and stop.
+Direct-start is explicit end-to-end authorization. Activate it only when the
+human partner says an equivalent of "start directly", "do not ask", "handle it
+yourself", or "continue through completion". Ordinary task verbs such as
+"implement", "fix", or "add" do not activate it.
 
-Phrase this offer as escalation to the requesting-code-review workflow, not as an offer to personally review the files. When the user replies to this gate with "code review", "代码审查", "yes, review", or an equivalent consent phrase, treat it as acceptance of the escalation offer. Invoke `superpowers:requesting-code-review` only; do NOT also invoke generic file/diff/code-review skills. The requesting-code-review skill owns any reviewer dispatch or review workflow.
+When active:
 
-This exclusion is scoped to completion-gate replies. A fresh, unrelated request like "review this diff" with files or a patch is a normal review request, not automatic escalation consent.
+1. Classify the path internally; do not ask the partner to approve it.
+2. Skip ordinary clarification, design-approval, spec-approval,
+   plan-execution, and code-review questions.
+3. Infer reasonable assumptions and report only material ones at completion.
+4. Upgrade the path when hidden complexity appears without leaving
+   direct-start.
+5. For Architectural work, write and self-review the spec as needed, then route
+   plan creation to `writing-plans`; that skill creates the plan and performs
+   its one independent plan review.
+6. At `write_plan`, pass direct-start to `writing-plans`; that skill owns plan
+   creation, the one-pass plan review, executor selection, and continuation.
+7. Do not offer or automatically open the Visual Companion.
 
-A completion summary that omits this question is a process failure. Small scope, direct-start mode, successful verification, or "just a quick final update" do not skip this gate.
-</COMPLETION-GATE>
+Direct-start stops only for an irreversible or destructive operation, a
+security-sensitive operation, an external side effect that conventionally
+requires consent, missing credentials or permissions, or a request so
+underspecified that every implementation would be a guess.
 
-## Direct-Start Override
+## Three Paths
 
-Direct-start mode requires an explicit user override that you can quote from the user's message. Match the user's actual language; semantic equivalents in any language count.
+Unless direct-start is active, before your first question classify the
+request and say the classification out loud — "this looks bounded, so
+I'll present a short design here rather than write a spec" — so your
+human partner can override it:
 
-- Task verbs such as "implement", "fix", "update", or "add" describe **what** to do; they do **not** waive questioning or design approval
-- Valid overrides sound like "start directly", "don't ask follow-up questions", "skip the design", "just do it", or "continue through completion", or clear equivalents in the user's language
-- If you cannot point to the user's explicit override, stay on the default path
-- In direct-start mode, infer reasonable constraints from context, state only material assumptions, and ask at most the minimum blocking question
-- Do not treat size, confidence, or file references as implied permission to skip brainstorming
+- **Spike** — a feasibility question ("can we...", "is it possible...",
+  "quick and dirty is fine") whose output is an answer, not code you
+  keep. Present the question and what you'll try in 2-3 sentences, get
+  a nod, then find out as cheaply as correctness allows. No design
+  doc, no spec file. Report findings as a recommendation; anything you
+  built stays labeled throwaway.
+- **Bounded** — a well-scoped change to code that already exists in
+  this repo: a new flag, a small endpoint, a one-file fix.
+  Understanding the kind of app is not enough — bounded means the flow
+  you are changing is already here to read. If there is no existing
+  flow to change, the task is not bounded. Ask the clarifying
+  questions that matter, present a short design IN CHAT (a few
+  sentences to a few short paragraphs), and STOP. Implementation
+  starts only after your human partner says yes to that design — a
+  bounded task's approval is as hard a gate as an architectural
+  one. No spec file, no implementation plan document.
+- **Architectural** — new projects, new subsystems, changes that
+  restructure how components fit together or alter interfaces others
+  depend on. Follow the full process: questions, approaches, sectioned
+  design, written spec, then the writing-plans skill.
 
-## Plan Handoff Authorization
+When in doubt between two paths, take the heavier one. The ratchet is
+one-way: hidden complexity discovered mid-task upgrades the path —
+stop and say so in normal mode, or upgrade internally in direct-start.
+Nothing downgrades mid-task.
 
-`direct-start` and `continuous-execution` are independent authorization states.
-Record each only when the user's explicit words support it:
+## Anti-Pattern: "Too Simple To Need Approval"
 
-| User wording | `direct-start` | `continuous-execution` |
-|---|---:|---:|
-| "Implement X", "fix Y", or another task verb | no | no |
-| "Start directly", "skip the design", or "just do it" | yes | no |
-| "Continue through completion", "do not pause unless blocked", or a clear equivalent | yes | yes |
+Every normal path ends with your human partner approving your intent before
+implementation. A todo list, a single-function utility, a config change — the
+design may be two sentences in chat, but you MUST present it and get approval.
+"Simple" tasks are where unexamined assumptions cause the most wasted work.
+What scales with simplicity is the artifact, never the approval.
 
-<PLAN-HANDOFF-GATE>
-For larger work routed to `superpowers:writing-plans`, plan creation and plan
-execution are separate transitions.
+## Red Flags
 
-After the plan is saved and self-reviewed:
-
-- If `continuous-execution` is active, continue without an execution-choice
-  question. Use the user's specified execution workflow; if none was specified,
-  invoke `superpowers:subagent-driven-development` as the recommended default.
-- Otherwise, the handoff response consists of the saved plan path, the
-  execution choices required by `superpowers:writing-plans`, and one question
-  asking the user to choose. End the turn there.
-
-On the second path, implementation starts only after the user selects an
-execution approach or explicitly asks to execute the plan. Design approval,
-spec approval, a direct-start-only override, task verbs, urgency, fresh
-context, and a "recommended" label do not satisfy this execution predicate.
-</PLAN-HANDOFF-GATE>
-
-## Anti-Pattern: "This Is Too Simple To Need A Design"
-
-By default, every project goes through this process. A todo list, a single-function utility, a config change — all of them. "Simple" projects are where unexamined assumptions cause the most wasted work. The design can be short (a few sentences for truly simple projects), but you MUST still present it and get approval.
-
-For pressure cases, rationalizations, and self-checks, see [anti-rationalizations.md](anti-rationalizations.md).
+| Thought | Reality |
+|---------|---------|
+| "This is too simple to need a design" | Simple means a short design, not no design. Two sentences in chat, then approval. |
+| "I'll call it bounded and skip the spec" | Reaching for a label to skip work IS the doubt — take the heavier path. |
+| "It's bounded and the design is obvious — I'll start while they read it" | The gate is the approval, not the design's length. Present, then stop until you hear yes. |
+| "I understand this kind of app, so it's bounded" | Bounded measures the repo, not your familiarity. A new project has no existing flow — it is architectural. |
+| "The spike works, so I'll keep the code" | A spike's output is an answer. Keeping the code is a new request — classify it. |
+| "It grew, but I'm almost done — no need to re-classify" | Hidden complexity upgrades the path mid-task. Stop and say so in normal mode; upgrade internally in direct-start. |
+| "They approved the spike, so the follow-up change is approved too" | Each normal task gets its own classification and its own approval. |
+| "They said implement, so direct-start is implied" | Task verbs describe the work; only explicit end-to-end authorization activates direct-start. |
 
 ## Checklist
 
-You MUST create a task for each checklist item and complete them in order. Skip dialogue-only items when direct-start is active, skip design-doc-only items when no written spec is needed, and apply each item's own skip conditions where stated.
+Classify first, announce the path in normal mode, then create a task for each
+item on your path. Complete ordinary items in order. A condition-triggered
+item is a standing gate evaluated while later items proceed; trigger it only
+when its stated predicate becomes true, and skip it if the predicate never
+becomes true.
 
-1. **Explore project context** — check the relevant files, docs, and existing patterns
-2. **Check explicit authorization states** — record `direct-start` and `continuous-execution` independently from words you can quote; offer visual companion in its own message only when visual questions are likely
-3. **Ask clarifying questions** — in the default path, ask one at a time until purpose, constraints, and success criteria are clear
-4. **Propose approaches** — in the default path, present 2-3 options with trade-offs and a recommendation
-5. **Present design** — in the default path, present the design in sections and get approval
-6. **Judge complexity** — decide whether the work is small enough to skip both durable planning and a written spec, or complex enough to need a written design doc and/or `superpowers:writing-plans`
-7. **Write design doc when needed** — save the validated design only when it adds durable value, then self-review it for placeholders, contradictions, scope drift, and ambiguity
-8. **User reviews written spec** — if you wrote a design doc, stop and wait for the user's approval before planning or follow-up work
-9. **Route into follow-up work** — if the work is small, local, and non-complex, continue directly from the approved design on the default path, or directly after direct-start context analysis on the direct-start path, and later follow the closing discipline from `superpowers:executing-plans`; otherwise use `superpowers:writing-plans`, then apply the plan handoff gate before any implementation
-10. **Offer code-review escalation** — after final self-review and verification on the small direct path, ask whether the user wants the `superpowers:requesting-code-review` escalation workflow unless they already accepted, declined, or prohibited it. If yes, invoke only `superpowers:requesting-code-review` before dispatching any review subagent; do not also invoke generic review skills or recreate its workflow from memory
+**Spike:**
+1. **Explore project context** — enough to frame the probe
+2. **Present question + probe plan** — 2-3 sentences
+3. **Get approval** — a nod is enough
+4. **Investigate** — as cheaply as correctness allows
+5. **Report findings** — a recommendation; label anything built as throwaway
+
+**Bounded:**
+1. **Explore project context** — check files, docs, recent commits
+2. **Ask clarifying questions** — one at a time, the ones that matter
+3. **Present short design in chat** — approach, files touched, testing
+4. **Get approval** — STOP and wait for an explicit yes; presenting the design and starting in the same breath is skipping the gate
+5. **Implement** — proceed with the normal development workflow. Select TDD
+   only when the human partner explicitly requested it or the approved
+   requirements require it; otherwise use Standard testing. No plan document.
+
+**Architectural:**
+1. **Explore project context** — check files, docs, recent commits
+2. **Offer the visual companion just-in-time** — NOT upfront. The first time a question would genuinely be clearer shown than described, offer it then (its own message); on approval its browser tab opens for you. If no visual question ever arises, never offer it. See the Visual Companion section below.
+3. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
+4. **Propose 2-3 approaches** — with trade-offs and your recommendation
+5. **Present design** — in sections scaled to their complexity, get user approval after each section
+6. **Write design doc** — save to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`; leave it unstaged and uncommitted
+7. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
+8. **User reviews written spec** — ask user to review the spec file before proceeding
+9. **Transition to implementation** — invoke writing-plans skill to create implementation plan
+
+**Direct-start:**
+1. **Explore project context** — enough to classify and identify blockers
+2. **Classify internally** — Spike, Bounded, or Architectural; never downgrade
+3. **Infer decisions** — record only material assumptions for the final report
+4. **Route internally** — report findings, implement without a plan, or enter
+   `write_plan`, which passes the state to `writing-plans`
+5. **Hand off at the terminal route** — pass the state only. `writing-plans`
+   owns plan creation, review, and executor selection for `write_plan`; the
+   downstream development workflow owns implementation, review, verification,
+   and completion. Brainstorming does not continue beyond its terminal route.
 
 ## Process Flow
 
 ```dot
 digraph brainstorming {
-    "Explore project context" [shape=box];
-    "User explicitly says\nstart directly?" [shape=diamond];
-    "Analyze context and\ninfer assumptions" [shape=box];
-    "Visual questions ahead?" [shape=diamond];
-    "Offer Visual Companion\n(own message, no other content)" [shape=box];
-    "Ask clarifying questions" [shape=box];
-    "Propose 2-3 approaches" [shape=box];
-    "Present design sections" [shape=box];
-    "User approves design?" [shape=diamond];
-    "Small, local,\nnon-complex change?" [shape=diamond];
-    "Need design doc?" [shape=diamond];
-    "Write design doc" [shape=box];
-    "User reviews spec?" [shape=diamond];
-    "Start implementation directly" [shape=box];
-    "Read changed files,\nself-review, and verify" [shape=box];
-    "User wants\ncode review?" [shape=diamond];
-    "Invoke superpowers:requesting-code-review skill" [shape=box];
-    "Invoke writing-plans skill" [shape=box];
-    "Continuous execution\nexplicitly authorized?" [shape=diamond];
-    "Present execution choices\nand STOP" [shape=doublecircle];
-    "Use requested executor\nor recommended SDD" [shape=doublecircle];
-    "Complete follow-up work" [shape=doublecircle];
+    "Explicit direct-start?" [shape=diamond];
+    "Classify aloud" [shape=box];
+    "Classify internally" [shape=box];
+    "Spike" [shape=diamond];
+    "Bounded" [shape=diamond];
+    "Architectural" [shape=diamond];
+    "Normal path approvals" [shape=box];
+    "Infer decisions; no ordinary questions" [shape=box];
+    "report_findings" [shape=doublecircle];
+    "implement_without_plan" [shape=doublecircle];
+    "write_plan" [shape=doublecircle];
 
-    "Explore project context" -> "User explicitly says\nstart directly?";
-    "User explicitly says\nstart directly?" -> "Analyze context and\ninfer assumptions" [label="yes"];
-    "User explicitly says\nstart directly?" -> "Visual questions ahead?" [label="no"];
-    "Analyze context and\ninfer assumptions" -> "Small, local,\nnon-complex change?";
-    "Visual questions ahead?" -> "Offer Visual Companion\n(own message, no other content)" [label="yes"];
-    "Visual questions ahead?" -> "Ask clarifying questions" [label="no"];
-    "Offer Visual Companion\n(own message, no other content)" -> "Ask clarifying questions";
-    "Ask clarifying questions" -> "Propose 2-3 approaches";
-    "Propose 2-3 approaches" -> "Present design sections";
-    "Present design sections" -> "User approves design?";
-    "User approves design?" -> "Present design sections" [label="no, revise"];
-    "User approves design?" -> "Small, local,\nnon-complex change?" [label="yes"];
-    "Small, local,\nnon-complex change?" -> "Start implementation directly" [label="yes"];
-    "Small, local,\nnon-complex change?" -> "Need design doc?" [label="no"];
-    "Need design doc?" -> "Write design doc" [label="yes"];
-    "Need design doc?" -> "Invoke writing-plans skill" [label="no"];
-    "User reviews spec?" -> "Write design doc" [label="changes requested"];
-    "Write design doc" -> "User reviews spec?";
-    "User reviews spec?" -> "Invoke writing-plans skill" [label="approved"];
-    "Invoke writing-plans skill" -> "Continuous execution\nexplicitly authorized?";
-    "Continuous execution\nexplicitly authorized?" -> "Present execution choices\nand STOP" [label="no"];
-    "Continuous execution\nexplicitly authorized?" -> "Use requested executor\nor recommended SDD" [label="yes"];
-    "Start implementation directly" -> "Read changed files,\nself-review, and verify";
-    "Read changed files,\nself-review, and verify" -> "User wants\ncode review?";
-    "User wants\ncode review?" -> "Invoke superpowers:requesting-code-review skill" [label="yes"];
-    "User wants\ncode review?" -> "Complete follow-up work" [label="no"];
-    "Invoke superpowers:requesting-code-review skill" -> "Complete follow-up work";
+    "Explicit direct-start?" -> "Classify internally" [label="yes"];
+    "Explicit direct-start?" -> "Classify aloud" [label="no"];
+    "Classify aloud" -> "Spike";
+    "Classify aloud" -> "Bounded";
+    "Classify aloud" -> "Architectural";
+    "Classify internally" -> "Infer decisions; no ordinary questions";
+    "Infer decisions; no ordinary questions" -> "report_findings" [label="Spike"];
+    "Infer decisions; no ordinary questions" -> "implement_without_plan" [label="Bounded"];
+    "Infer decisions; no ordinary questions" -> "write_plan" [label="Architectural"];
+    "Spike" -> "Normal path approvals";
+    "Bounded" -> "Normal path approvals";
+    "Architectural" -> "Normal path approvals";
+    "Normal path approvals" -> "report_findings" [label="Spike"];
+    "Normal path approvals" -> "implement_without_plan" [label="Bounded"];
+    "Normal path approvals" -> "write_plan" [label="Architectural"];
 }
 ```
 
-**Routing depends on complexity, not preference alone.** In direct-start mode, make that judgment from context yourself. Otherwise, make it after design approval. If you are genuinely unsure whether the work is still "small", bias toward `superpowers:writing-plans`. On the small direct path, borrow the final self-review and verification discipline from `superpowers:executing-plans`; do not invoke that skill unless a written implementation plan actually exists. On the plan path, use the plan handoff gate: direct-start alone does not authorize execution after plan creation.
+## Terminal Routing
+
+Brainstorming has exactly three terminal states:
+
+1. `report_findings` — Spike reports its recommendation.
+2. `implement_without_plan` — approved normal Bounded work, or direct-start
+   Bounded work, enters the normal development workflow without a plan.
+3. `write_plan` — Architectural work invokes `superpowers:writing-plans`.
+
+In normal mode, `writing-plans` handles `write_plan` by ending at the reviewed
+plan's three execution choices: Subagent-Driven, Inline Execution, or Do
+Nothing. Implementation starts only after the human partner selects one.
+
+`write_plan` is a Brainstorming terminal state. It invokes
+`superpowers:writing-plans` with the normal/direct-start state and does not
+choose an executor. `writing-plans` owns the review and mode-specific handoff.
 
 ## The Process
+
+The subsections below serve the normal Bounded and Architectural paths. A
+normal Spike stops at "present the probe, get a nod." Direct-start uses the
+same design principles internally while skipping ordinary questions and
+approval gates.
 
 **Understanding the idea:**
 
 - Check out the current project state first (files, docs, recent commits)
 - Before asking detailed questions, assess scope: if the request describes multiple independent subsystems (e.g., "build a platform with chat, file storage, billing, and analytics"), flag this immediately. Don't spend questions refining details of a project that needs to be decomposed first.
-- If the request spans multiple subsystems or a cross-cutting feature bundle, decompose it into sub-projects before implementation planning, even in direct-start mode: what are the independent pieces, how do they relate, what order should they be built? Then brainstorm the first sub-project through the normal design flow. Each sub-project gets its own design → optional spec → plan → implementation cycle.
-- In direct-start mode, infer the likely intent from context instead of running the normal questioning loop
-- For appropriately-scoped projects on the default path, ask questions one at a time to refine the idea
+- If the project is too large for a single spec, help the user decompose into sub-projects: what are the independent pieces, how do they relate, what order should they be built? Then brainstorm the first sub-project through the normal design flow. Each sub-project gets its own spec → plan → implementation cycle.
+- For appropriately-scoped projects in normal mode, ask questions one at a time to refine the idea
+- In direct-start, infer the likely intent from repository context instead of running the normal questioning loop
 - Prefer multiple choice questions when possible, but open-ended is fine too
-- Only one question per message - if a topic needs more exploration, break it into multiple questions
+- Only one question per message — if a topic needs more exploration, break it into multiple questions
 - Focus on understanding: purpose, constraints, success criteria
 
 **Exploring approaches:**
 
-- In the default path, propose 2-3 different approaches with trade-offs
+- In normal mode, propose 2-3 different approaches with trade-offs
 - Present options conversationally with your recommendation and reasoning
 - Lead with your recommended option and explain why
+- YAGNI ruthlessly — remove unnecessary features from every approach and design
 
 **Presenting the design:**
 
-- In the default path, once you believe you understand what you're building, present the design
+- In normal mode, once you believe you understand what you're building, present the design
 - Scale each section to its complexity: a few sentences if straightforward, up to 200-300 words if nuanced
-- In the default path, ask after each section whether it looks right so far
+- Ask after each section whether it looks right so far
 - Cover: architecture, components, data flow, error handling, testing
-- Treat TDD as selected only when the human partner explicitly requests it or an approved spec requires it; discussing testing does not select TDD
 - Be ready to go back and clarify if something doesn't make sense
-
-**Complexity routing:**
-
-- After design approval in the default path, or immediately after context analysis in direct-start mode, make an explicit complexity judgment
-- Small, local, low-risk work skips both the written design doc and `superpowers:writing-plans`
-- Cross-cutting, high-risk, multi-step, or rollback-sensitive work should use `superpowers:writing-plans`
-- For larger or uncertain work, `superpowers:writing-plans` is the default next step; a design doc is optional and never a prerequisite for that transition
-- If a larger design was approved in chat, you may move straight into `superpowers:writing-plans`; do not create a spec afterward unless it adds durable value
-- After `superpowers:writing-plans` completes, either continue under an explicit `continuous-execution` authorization or present its execution choices and stop
-- Write a design doc only when it adds durable value; do not create one just because brainstorming happened
 
 **Design for isolation and clarity:**
 
 - Break the system into smaller units that each have one clear purpose, communicate through well-defined interfaces, and can be understood and tested independently
 - For each unit, you should be able to answer: what does it do, how do you use it, and what does it depend on?
 - Can someone understand what a unit does without reading its internals? Can you change the internals without breaking consumers? If not, the boundaries need work.
-- Smaller, well-bounded units are also easier for you to work with - you reason better about code you can hold in context at once, and your edits are more reliable when files are focused. When a file grows large, that's often a signal that it's doing too much.
+- Smaller, well-bounded units are also easier for you to work with — you reason better about code you can hold in context at once, and your edits are more reliable when files are focused. When a file grows large, that's often a signal that it's doing too much.
 
 **Working in existing codebases:**
 
 - Explore the current structure before proposing changes. Follow existing patterns.
-- Where existing code has problems that affect the work (e.g., a file that's grown too large, unclear boundaries, tangled responsibilities), include targeted improvements as part of the design - the way a good developer improves code they're working in.
+- Where existing code has problems that affect the work (e.g., a file that's grown too large, unclear boundaries, tangled responsibilities), include targeted improvements as part of the design — the way a good developer improves code they're working in.
 - Don't propose unrelated refactoring. Stay focused on what serves the current goal.
 
-## After the Design
+## After the Design (normal Architectural path)
 
-For design-doc writing, spec self-review, user review gating, and post-approval implementation routing, see [after-the-design.md](after-the-design.md).
+**Documentation:**
 
-## Key Principles
+- Write the validated design (spec) to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
+  - (Human partner preferences for spec location override this default)
+- Use elements-of-style:writing-clearly-and-concisely skill if available
+- Leave the design document unstaged and uncommitted
 
-- **One question at a time** - Don't overwhelm with multiple questions when questions are actually needed
-- **Multiple choice preferred** - Easier to answer than open-ended when possible
-- **YAGNI ruthlessly** - Remove unnecessary features from all designs
-- **Explore alternatives** - In the default path, propose 2-3 approaches before settling
-- **Incremental validation** - In the default path, present design and get approval before implementation
-- **Be flexible** - Go back and clarify when something doesn't make sense
+**Spec Self-Review:**
+After writing the spec document, look at it with fresh eyes:
+
+1. **Placeholder scan:** Any "TBD", "TODO", incomplete sections, or vague requirements? Fix them.
+2. **Internal consistency:** Do any sections contradict each other? Does the architecture match the feature descriptions?
+3. **Scope check:** Is this focused enough for a single implementation plan, or does it need decomposition?
+4. **Ambiguity check:** Could any requirement be interpreted two different ways? If so, pick one and make it explicit.
+
+Fix any issues inline. No need to re-review — just fix and move on.
+
+**User Review Gate:**
+After the spec review loop passes, ask the human partner to review the written
+spec before proceeding:
+
+> "Spec written to `<path>`. Please review it and let me know if you want to make any changes before we start writing out the implementation plan."
+
+Wait for the human partner's response. If they request changes, make them and
+re-run the spec review loop. Only proceed once they approve.
+
+**Implementation:**
+
+- Invoke the writing-plans skill to create a detailed implementation plan
+- Do NOT invoke any other skill. writing-plans is the next step.
+
+## Visual Companion
+
+This section applies only to normal Architectural mode. Direct-start neither
+offers nor automatically opens the Visual Companion.
+
+A browser-based companion for showing mockups, diagrams, and visual options during brainstorming. Available as a tool — not a mode. Accepting the companion means it's available for questions that benefit from visual treatment; it does NOT mean every question goes through the browser.
+
+**Offering the companion (just-in-time):** Do NOT offer it upfront. Wait until a question would genuinely be clearer shown than told — a real mockup / layout / diagram question, not merely a UI *topic*. The first time that happens, offer it then, as its own message:
+> "This next part might be easier if I show you — I can put together mockups, diagrams, and comparisons in a browser tab as we go. It's still new and can be token-intensive. Want me to? I'll open it for you."
+
+**This offer MUST be its own message.** Only the offer — no clarifying question, summary, or other content. Wait for the user's response. If they accept, start the server with `--open` so their browser opens to the first screen automatically. If they decline, continue text-only and don't offer again unless they raise it.
+
+**Per-question decision:** Even after the user accepts, decide FOR EACH QUESTION whether to use the browser or the terminal. The test: **would the user understand this better by seeing it than reading it?**
+
+- **Use the browser** for content that IS visual — mockups, wireframes, layout comparisons, architecture diagrams, side-by-side visual designs
+- **Use the terminal** for content that is text — requirements questions, conceptual choices, tradeoff lists, A/B/C/D text options, scope decisions
+
+A question about a UI topic is not automatically a visual question. "What does personality mean in this context?" is a conceptual question — use the terminal. "Which wizard layout works better?" is a visual question — use the browser.
+
+If they agree to the companion, read the detailed guide before proceeding:
+`skills/brainstorming/visual-companion.md`

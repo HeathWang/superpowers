@@ -1,47 +1,46 @@
 #!/usr/bin/env bash
-# Generate a review package from two worktree snapshot trees: snapshot
-# identifiers, stat summary, and the net diff with extended context, written
-# to a file the reviewer reads in one call.
+# Generate a review package: commit list, stat summary, and the net
+# diff with extended context, written to a file the reviewer reads in one
+# call. Using the recorded per-task BASE (not HEAD~1) keeps multi-commit
+# tasks intact.
 #
-# Usage: review-package BEFORE_SNAPSHOT AFTER_SNAPSHOT [OUTFILE]
-# Default OUTFILE:
-# <repo-root>/.superpowers/sdd/review-<before7>..<after7>.diff
+# Usage: review-package PLAN_FILE BASE HEAD [OUTFILE]
+# Default OUTFILE: <repo-root>/.superpowers/sdd/<plan-basename>/review-<base7>..<head7>.diff
 # (named per range, so a re-review after fixes gets a distinct fresh file).
 set -euo pipefail
 
-if [ $# -lt 2 ] || [ $# -gt 3 ]; then
-  echo "usage: review-package BEFORE_SNAPSHOT AFTER_SNAPSHOT [OUTFILE]" >&2
+if [ $# -lt 3 ] || [ $# -gt 4 ]; then
+  echo "usage: review-package PLAN_FILE BASE HEAD [OUTFILE]" >&2
   exit 2
 fi
 
-before=$1
-after=$2
+plan=$1
+base=$2
+head=$3
+[ -f "$plan" ] || { echo "no such plan file: $plan" >&2; exit 2; }
 
-before_tree=$(git rev-parse --verify "$before^{tree}") \
-  || { echo "bad BEFORE_SNAPSHOT: $before" >&2; exit 2; }
-after_tree=$(git rev-parse --verify "$after^{tree}") \
-  || { echo "bad AFTER_SNAPSHOT: $after" >&2; exit 2; }
+git rev-parse --verify --quiet "$base" >/dev/null || { echo "bad BASE: $base" >&2; exit 2; }
+git rev-parse --verify --quiet "$head" >/dev/null || { echo "bad HEAD: $head" >&2; exit 2; }
 
-if [ $# -eq 3 ]; then
-  out=$3
+if [ $# -eq 4 ]; then
+  out=$4
 else
-  dir=$("$(cd "$(dirname "$0")" && pwd)/sdd-workspace")
-  out="$dir/review-${before_tree:0:7}..${after_tree:0:7}.diff"
+  dir=$("$(cd "$(dirname "$0")" && pwd)/sdd-workspace" "$plan")
+  out="$dir/review-$(git rev-parse --short "$base")..$(git rev-parse --short "$head").diff"
 fi
 
 {
-  echo "# Review package: ${before_tree}..${after_tree}"
+  echo "# Review package: ${base}..${head}"
   echo
-  echo "## Snapshots"
-  echo "Before: ${before_tree}"
-  echo "After:  ${after_tree}"
+  echo "## Commits"
+  git log --oneline "${base}..${head}"
   echo
   echo "## Files changed"
-  git diff --stat "$before_tree" "$after_tree"
+  git diff --stat "${base}..${head}"
   echo
   echo "## Diff"
-  git diff -U10 "$before_tree" "$after_tree"
+  git diff -U10 "${base}..${head}"
 } > "$out"
 
-files=$(git diff --name-only "$before_tree" "$after_tree" | wc -l | tr -d ' ')
-echo "wrote ${out}: ${files} file(s), $(wc -c < "$out" | tr -d ' ') bytes"
+commits=$(git rev-list --count "${base}..${head}")
+echo "wrote ${out}: ${commits} commit(s), $(wc -c < "$out" | tr -d ' ') bytes"
